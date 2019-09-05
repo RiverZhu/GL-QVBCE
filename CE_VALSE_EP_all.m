@@ -1,18 +1,10 @@
 function out = CE_VALSE_EP_all(y_q,m,ha,T,pilot,h_orig, yy_min,B,alpha,Iter_max,method_EP)
     
     M = size(m,1);
-%     N = m(M)+1;
     N = length(h_orig);
     L = N;
-%     ratio = min(B/T,1);
-% ratio = 1/T;
-%  P_omega_vec = P_omega(:);
-%     h_var_A_ext = 1e1*ones(M,1);
-%     h_mean_A_ext = zeros(M,1);
-%     v_B_ext = 1e1*ones(M*T,1);
     v_B_ext = 1e1*ones(M*T,1);
     z_B_ext = zeros(M*T,1);
-%     u_A_post = zeros(size(h));
     mse = zeros(Iter_max,1);
     Kt = zeros(Iter_max,1);
     yI = zeros(N,T);
@@ -44,9 +36,7 @@ for g = 1:T
     nu_vec(g)  = mean(evs(1:floor(N/4)));
 end
 nu = mean(nu_vec);
-% nu = nu_vec(1);
-%     nu = y'*y/M/100;
-%     nu = 0.4337;
+
     if B<inf
         z_B_ext_real = [real(z_B_ext);imag(z_B_ext)];
         v_B_ext_real = [v_B_ext;v_B_ext]/2;
@@ -65,20 +55,10 @@ nu = mean(nu_vec);
         V_C_ext = reshape(v_C_ext,M,T);
         Z_C_ext = reshape(z_C_ext,M,T);
     end
-%     if T>1
-%         for gg = 2:T
-%             V_C_ext(~P_omega(:,gg)) = inf;
-%         end
-%     end
+
     v_u_B_ext = 1./sum(bsxfun(@rdivide,abs(pilot.').^2,V_C_ext),2);
     u_B_ext = v_u_B_ext.*sum(bsxfun(@times,pilot',Z_C_ext./V_C_ext),2);
-%     v_u_B_ext = 1./mean(bsxfun(@rdivide,abs(pilot.').^2,V_C_ext),2);
-%     u_B_ext = v_u_B_ext.*mean(bsxfun(@times,pilot',Z_C_ext./V_C_ext),2);
-%         v_u_B_ext = 1./sum(bsxfun(@rdivide,abs(pilot(1).').^2,V_C_ext(:,1)),2);
-% %     v_u_B_ext = mean(V_C_ext,2);
-%     u_B_ext = v_u_B_ext.*sum(bsxfun(@times,pilot(1)',Z_C_ext(:,1)./V_C_ext(:,1)),2);
-%     v_u_B_ext = v_u_B_ext/ratio;
-%     zzz = abs(pilot.').^2
+
     y = u_B_ext;
     sigma = v_u_B_ext;
 
@@ -150,17 +130,12 @@ nu = mean(nu_vec);
 
 cont = 1;
 while cont
-%         ratio = max(0.1^t,1/T);
-%         if t==102
-%             11
-%         end
         t = t + 1;
         % Update the support and weights
         [ K, s, w, C ] = maxZ_diag( J, h, M, sigma, rho, tau, T );
         if K==0
             out = struct('noise_var',nu,'iterations',t,'MSE',mse,'K',Kt);
             sprintf('No signal detected');
-%             out = struct('freqs',th,'amps',w(s),'x_estimate',xr,'noise_var',nu,'iterations',t,'MSE',mse,'K',Kt);
             return;
         end
         % Update the noise variance, the variance of prior and the Bernoulli probability
@@ -202,10 +177,6 @@ while cont
         add_var2 = trace(C(s,s))*ones(M,1)-TT_mat*diag(C(s,s));
         v_A_post = v_A_post+real(add_var1)+real(add_var2);
         
-        Z_A_post_x = z_A_post*(pilot.');
-        V_A_post_x = v_A_post*(abs(pilot.').^2);
-        
-        nu = mean(abs(z_C_ext-Z_A_post_x(:)).^2+V_A_post_x(:));
         switch method_EP
             case 'scalar_EP'
                 v_A_post = mean(v_A_post)*ones(M,1);
@@ -216,7 +187,7 @@ while cont
         v_u_A_post = v_A_post;
         u_A_post = z_A_post;
         v_u_A_ext = v_u_A_post.*sigma./(sigma-v_u_A_post);
-        v_u_A_ext = v_u_A_ext.*(v_u_A_ext>0)+10*max(max(v_u_A_ext),1)*(v_u_A_ext<=0);
+        v_u_A_ext = v_u_A_ext.*(v_u_A_ext>0)+max(max(v_u_A_ext),1)*(v_u_A_ext<=0);
         u_A_ext = v_u_A_ext.*(u_A_post./v_u_A_post-y./sigma); 
         
         h_mean_A_ext = u_A_ext;
@@ -226,13 +197,6 @@ while cont
             v_B_ext = h_var_A_ext*(abs(pilot.').^2);
             
         else
-            
-%             for g = 1:T
-%                 V_B_ext0_inv(:,g) = 1./(h_var_A_ext*(abs(pilot(g)).^2))+sum(1./V_C_ext,2)-1./V_C_ext(:,g);
-%                 V_B_ext0(:,g) = 1./V_B_ext0_inv(:,g);
-%                 Z_B_ext0(:,g) = V_B_ext0(:,g) .*(h_mean_A_ext./h_var_A_ext*pilot(g)./abs(pilot(g))^2+sum(Z_C_ext./V_C_ext,2)-Z_C_ext(:,g)./V_C_ext(:,g));
-%             end
-
             V_B_ext_diff = bsxfun(@minus,sum(1./V_C_ext,2),1./V_C_ext);
             V_B_ext0_inv = bsxfun(@plus,1./(h_var_A_ext*(abs(pilot.').^2)),V_B_ext_diff);
             V_B_ext0 = 1./V_B_ext0_inv;  % h_mean_A_ext*(pilot.')./(h_var_A_ext*(abs(pilot.').^2))
@@ -240,56 +204,33 @@ while cont
             temp_p = (pilot./(abs(pilot).^2)).';
             Z_B_ext0 = V_B_ext0.*(bsxfun(@plus,(h_mean_A_ext./h_var_A_ext).*temp_p,temp));
            
-%             Z_B_ext0 = h_mean_A_ext*(pilot.');
-%             V_B_ext0 = h_var_A_ext*(abs(pilot.').^2);
             z_B_ext = Z_B_ext0(:);
             v_B_ext = V_B_ext0(:);
-%             v_B_ext = v_B_ext/ratio;
             
         end
             
         if B<inf
-%             t
             z_B_ext_real = [real(z_B_ext);imag(z_B_ext)];
             v_B_ext_real = [v_B_ext;v_B_ext]/2;
             [z_C_post_real, v_C_post_real] = GaussianMomentsComputation(y_q, z_B_ext_real, v_B_ext_real, yy_min, B, alpha, nu/2);
             v_C_post = v_C_post_real(1:M*T)+v_C_post_real(M*T+1:end);
             z_C_post = z_C_post_real(1:M*T)+1j*z_C_post_real(M*T+1:end);
             v_C_ext = v_C_post.*v_B_ext./(v_B_ext-v_C_post);
-%             v_C_ext = min(v_C_ext,1e4);
             v_C_ext = v_C_ext.*(v_C_ext>0)+max(v_C_ext).*(v_C_ext<=0);
             z_C_ext = v_C_ext.*(z_C_post./v_C_post-z_B_ext./v_B_ext);
-%             nu = mean(abs(z_C_ext-z_C_post).^2+v_C_post);
-%             if T==1
-%                 nu = mean(abs(z_C_ext-z_C_post).^2+v_C_post);
-%             else
-%                 nu = mean(abs(z_C_ext(P_omega_vec==1)-z_C_post(P_omega_vec==1)).^2+v_C_post(P_omega_vec==1));
-%             end
-                
-                
-%             nu = median(abs(z_C_ext-z_C_post).^2+v_C_post);
+            nu = mean(abs(z_C_ext-z_C_post).^2+v_C_post);
+
         else
             v_C_post =v_B_ext.*nu./(v_B_ext+nu);
             z_C_post = v_C_post.*(z_B_ext./v_B_ext+y_q./nu);
             v_C_ext = nu*ones(M*T,1);
             z_C_ext = y_q;
-%             nu = mean(abs(z_C_ext-z_C_post).^2+v_C_post);
+            nu = mean(abs(z_C_ext-z_C_post).^2+v_C_post);
         end
         V_C_ext = reshape(v_C_ext,M,T);
-%         if T>1
-%              for gg = 2:T
-%                 V_C_ext(~P_omega(:,gg)) = inf;
-%             end
-% %             V_C_ext(~P_omega) = inf;
-%         end
         Z_C_ext = reshape(z_C_ext,M,T);
         v_u_B_ext = 1./sum(bsxfun(@rdivide,abs(pilot.').^2,V_C_ext),2);
         u_B_ext = v_u_B_ext.*sum(bsxfun(@times,pilot',Z_C_ext./V_C_ext),2);
-%         v_u_B_ext = 1./mean(bsxfun(@rdivide,abs(pilot.').^2,V_C_ext),2);
-%         u_B_ext = v_u_B_ext.*mean(bsxfun(@times,pilot',Z_C_ext./V_C_ext),2);
-%         v_u_B_ext = 1./sum(bsxfun(@rdivide,abs(pilot(1).').^2,V_C_ext(:,1)),2);
-%         u_B_ext = v_u_B_ext.*sum(bsxfun(@times,pilot(1)',Z_C_ext(:,1)./V_C_ext(:,1)),2);
-%         v_u_B_ext = v_u_B_ext*T;
         sigma = v_u_B_ext;
         y = u_B_ext;
         J = A(m+1,:)'*diag(1./sigma)*A(m+1,:);

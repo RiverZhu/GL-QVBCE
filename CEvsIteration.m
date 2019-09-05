@@ -131,9 +131,6 @@ elseif SNR==20
     pos = [12,-28];
     ylim([-40,20])
     save('MSEh_Itersnr20.mat','MSE_h_VALSE_AQNM_mean','MSE_h_VALSE_mean','MSE_h_LS_mean','Iter_max')
-elseif SNR==40
-    pos = [10,-12];
-    save('MSEh_Itersnr40.mat','MSE_h_VALSE_AQNM_mean','MSE_h_VALSE_mean','MSE_h_LS_mean','Iter_max')
 end
 text(pos(1),pos(2),sprintf('SNR=%d dB',SNR),'Fontsize',fsz)   % 10 dB, pos = (1.5,-24) % 20 dB, pos = (8,-30) % 30 dB, pos = (3,-45)
 

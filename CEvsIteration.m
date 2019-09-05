@@ -12,7 +12,7 @@ K = 2;              % number of sinusoidal components
 Iter_max = 1000;
 SNR = 0;
 T = 1;        % Traning T durations
-MC = 2;
+MC = 10;       % Set MC=10 to view the results quickly
 B_all = [1;2;3;inf];
 P = 1;
 r = nan(K,1);

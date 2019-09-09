@@ -5,6 +5,8 @@ function out = CE_VALSE_EP_all(y_q,m,ha,T,pilot,h_orig, yy_min,B,alpha,Iter_max,
     L = N;
     v_B_ext = 1e1*ones(M*T,1);
     z_B_ext = zeros(M*T,1);
+    pilot_H = pilot';
+%     u_A_post = zeros(size(h));
     mse = zeros(Iter_max,1);
     Kt = zeros(Iter_max,1);
     yI = zeros(N,T);
@@ -36,11 +38,10 @@ for g = 1:T
     nu_vec(g)  = mean(evs(1:floor(N/4)));
 end
 nu = mean(nu_vec);
-
     if B<inf
         z_B_ext_real = [real(z_B_ext);imag(z_B_ext)];
         v_B_ext_real = [v_B_ext;v_B_ext]/2;
-        [z_C_post_real, v_C_post_real] = GaussianMomentsComputation(y_q, z_B_ext_real, v_B_ext_real, yy_min, B, alpha, nu/2);
+        [z_C_post_real, v_C_post_real] = GaussianMomentsComputation_MJH(y_q, z_B_ext_real, v_B_ext_real, yy_min, B, alpha, nu/2);
         v_C_post = v_C_post_real(1:M*T)+v_C_post_real(M*T+1:end);
         z_C_post = z_C_post_real(1:M*T)+1j*z_C_post_real(M*T+1:end);
         v_C_ext = v_C_post.*v_B_ext./(v_B_ext-v_C_post);
@@ -58,7 +59,6 @@ nu = mean(nu_vec);
 
     v_u_B_ext = 1./sum(bsxfun(@rdivide,abs(pilot.').^2,V_C_ext),2);
     u_B_ext = v_u_B_ext.*sum(bsxfun(@times,pilot',Z_C_ext./V_C_ext),2);
-
     y = u_B_ext;
     sigma = v_u_B_ext;
 
@@ -176,7 +176,6 @@ while cont
         add_var1 = w(s)'*w(s)*ones(M,1)-TT_mat*(w(s).*conj(w(s)));
         add_var2 = trace(C(s,s))*ones(M,1)-TT_mat*diag(C(s,s));
         v_A_post = v_A_post+real(add_var1)+real(add_var2);
-        
         switch method_EP
             case 'scalar_EP'
                 v_A_post = mean(v_A_post)*ones(M,1);
@@ -197,29 +196,40 @@ while cont
             v_B_ext = h_var_A_ext*(abs(pilot.').^2);
             
         else
-            V_B_ext_diff = bsxfun(@minus,sum(1./V_C_ext,2),1./V_C_ext);
-            V_B_ext0_inv = bsxfun(@plus,1./(h_var_A_ext*(abs(pilot.').^2)),V_B_ext_diff);
-            V_B_ext0 = 1./V_B_ext0_inv;  % h_mean_A_ext*(pilot.')./(h_var_A_ext*(abs(pilot.').^2))
-            temp = (sum(Z_C_ext./V_C_ext,2)-Z_C_ext./V_C_ext);
-            temp_p = (pilot./(abs(pilot).^2)).';
-            Z_B_ext0 = V_B_ext0.*(bsxfun(@plus,(h_mean_A_ext./h_var_A_ext).*temp_p,temp));
-           
+
+            temp00 = bsxfun(@minus,sum(bsxfun(@rdivide,abs(pilot').^2,V_C_ext),2),bsxfun(@rdivide,abs(pilot').^2,V_C_ext));
+            temp11 = bsxfun(@plus,1./h_var_A_ext,temp00);
+            V_B_ext0_inv = bsxfun(@rdivide,temp11,abs(pilot').^2);
+            V_B_ext0 = 1./V_B_ext0_inv;  
+%             % |x_t| is a constant
+%             V_B_ext_diff = bsxfun(@minus,sum(1./V_C_ext,2),1./V_C_ext);
+%             V_B_ext0_inv = bsxfun(@plus,1./(h_var_A_ext*(abs(pilot.').^2)),V_B_ext_diff);
+%             V_B_ext0 = 1./V_B_ext0_inv;  % h_mean_A_ext*(pilot.')./(h_var_A_ext*(abs(pilot.').^2))
+            
+            ZZZ0 = bsxfun(@minus,sum(bsxfun(@times,pilot_H,Z_C_ext./V_C_ext),2),bsxfun(@times,pilot_H,Z_C_ext./V_C_ext));
+            ZZZ1 = V_B_ext0.*(bsxfun(@plus,ZZZ0,h_mean_A_ext./h_var_A_ext));
+            Z_B_ext0 = bsxfun(@rdivide,ZZZ1,pilot_H);
+%             for gg= 1:T
+%                 ind_diff = setdiff(ind_all,gg);
+%                 ZZZ = bsxfun(@times,pilot_H,Z_C_ext./V_C_ext);
+%                 Z_B_ext0(:,gg) = V_B_ext0(:,gg).*(h_mean_A_ext./h_var_A_ext*temp_p(gg)+sum(ZZZ(:,ind_diff),2)/pilot_H(gg));
+%             end
             z_B_ext = Z_B_ext0(:);
             v_B_ext = V_B_ext0(:);
             
         end
             
         if B<inf
+%             t
             z_B_ext_real = [real(z_B_ext);imag(z_B_ext)];
             v_B_ext_real = [v_B_ext;v_B_ext]/2;
-            [z_C_post_real, v_C_post_real] = GaussianMomentsComputation(y_q, z_B_ext_real, v_B_ext_real, yy_min, B, alpha, nu/2);
+            [z_C_post_real, v_C_post_real] = GaussianMomentsComputation_MJH(y_q, z_B_ext_real, v_B_ext_real, yy_min, B, alpha, nu/2);
             v_C_post = v_C_post_real(1:M*T)+v_C_post_real(M*T+1:end);
             z_C_post = z_C_post_real(1:M*T)+1j*z_C_post_real(M*T+1:end);
             v_C_ext = v_C_post.*v_B_ext./(v_B_ext-v_C_post);
             v_C_ext = v_C_ext.*(v_C_ext>0)+max(v_C_ext).*(v_C_ext<=0);
             z_C_ext = v_C_ext.*(z_C_post./v_C_post-z_B_ext./v_B_ext);
             nu = mean(abs(z_C_ext-z_C_post).^2+v_C_post);
-
         else
             v_C_post =v_B_ext.*nu./(v_B_ext+nu);
             z_C_post = v_C_post.*(z_B_ext./v_B_ext+y_q./nu);

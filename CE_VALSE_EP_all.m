@@ -41,7 +41,7 @@ nu = mean(nu_vec);
     if B<inf
         z_B_ext_real = [real(z_B_ext);imag(z_B_ext)];
         v_B_ext_real = [v_B_ext;v_B_ext]/2;
-        [z_C_post_real, v_C_post_real] = GaussianMomentsComputation_MJH(y_q, z_B_ext_real, v_B_ext_real, yy_min, B, alpha, nu/2);
+        [z_C_post_real, v_C_post_real] = GaussianMomentsComputation(y_q, z_B_ext_real, v_B_ext_real, yy_min, B, alpha, nu/2);
         v_C_post = v_C_post_real(1:M*T)+v_C_post_real(M*T+1:end);
         z_C_post = z_C_post_real(1:M*T)+1j*z_C_post_real(M*T+1:end);
         v_C_ext = v_C_post.*v_B_ext./(v_B_ext-v_C_post);
@@ -223,7 +223,7 @@ while cont
 %             t
             z_B_ext_real = [real(z_B_ext);imag(z_B_ext)];
             v_B_ext_real = [v_B_ext;v_B_ext]/2;
-            [z_C_post_real, v_C_post_real] = GaussianMomentsComputation_MJH(y_q, z_B_ext_real, v_B_ext_real, yy_min, B, alpha, nu/2);
+            [z_C_post_real, v_C_post_real] = GaussianMomentsComputation(y_q, z_B_ext_real, v_B_ext_real, yy_min, B, alpha, nu/2);
             v_C_post = v_C_post_real(1:M*T)+v_C_post_real(M*T+1:end);
             z_C_post = z_C_post_real(1:M*T)+1j*z_C_post_real(M*T+1:end);
             v_C_ext = v_C_post.*v_B_ext./(v_B_ext-v_C_post);
